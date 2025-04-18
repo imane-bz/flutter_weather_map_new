@@ -131,25 +131,10 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Météo Map'),
-        actions: [
-          IconButton(
-            icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
-            onPressed: () {
-              setState(() {
-                _isListening = !_isListening;
-              });
-              if (_isListening) {
-                _voiceAssistant.startListening(_handleVoiceCommand);
-              } else {
-                _voiceAssistant.stopListening();
-              }
-            },
-          ),
-        ],
+        title: const Text('RouteGenie'),
+        actions: [], 
       ),
       
-      // Ajout du drawer (menu à gauche)
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -159,7 +144,7 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
                 color: Colors.blue,
               ),
               child: Text(
-                'Météo Map',
+                'RouteGenie',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -199,7 +184,7 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
               onTap: () {
                 showAboutDialog(
                   context: context,
-                  applicationName: 'Météo Map',
+                  applicationName: 'RouteGenie',
                   applicationVersion: '1.0.0',
                   children: [
                     const Text('Une application de météo et cartographie développée avec Flutter'),
@@ -303,29 +288,62 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
             ),
           ),
           
-          // Footer Capgemini
+          // Bouton microphone juste avant le footer
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isListening = !_isListening;
+                  });
+                  if (_isListening) {
+                    _voiceAssistant.startListening(_handleVoiceCommand);
+                  } else {
+                    _voiceAssistant.stopListening();
+                  }
+                },
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: _isListening ? Colors.red.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: _isListening ? Colors.red : Colors.blue,
+                    size: 32,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Footer Capgemini modifié
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            color: Colors.blue[800],
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Utiliser une icône si l'image n'est pas disponible
-                Builder(
-                  builder: (context) {
-                    try {
-                      return Image.asset('assets/images/capgemini_logo.png', height: 24);
-                    } catch (e) {
-                      return const Icon(Icons.business, color: Colors.white, size: 24);
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  '© Capgemini 2025',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
+            color: const Color.fromARGB(255, 109, 134, 163),
+            width: double.infinity,
+            child: Center(
+              child: Builder(
+                builder: (context) {
+                  try {
+                    // Logo plus grand et centré
+                    return Image.asset(
+                      'assets/images/capgemini_logo.png', 
+                      height: 35,  // Taille augmentée
+                      fit: BoxFit.contain,
+                    );
+                  } catch (e) {
+                    return const Icon(
+                      Icons.business, 
+                      color: Colors.white, 
+                      size: 35,
+                    );
+                  }
+                },
+              ),
             ),
           ),
         ],
