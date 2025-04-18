@@ -39,31 +39,28 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
       initPosition: GeoPoint(latitude: _defaultLat, longitude: _defaultLon),
     );
     
-    Position? position = await _locationService.getCurrentLocation();
-    
-    double lat = position?.latitude ?? _defaultLat;
-    double lon = position?.longitude ?? _defaultLon;
-    
+    // Commencer directement avec Casablanca au lieu d'essayer la position actuelle
     try {
-      await _mapController!.goToLocation(GeoPoint(latitude: lat, longitude: lon));
+      await _mapController!.goToLocation(GeoPoint(latitude: _defaultLat, longitude: _defaultLon));
       await _mapController!.setZoom(zoomLevel: 12);
-    } catch (e) {
-      // Méthode alternative si la première échoue
-      print("Navigation error: $e");
-    }
-    
-    // Obtenir les données météo
-    final weatherData = await _weatherService.getWeatherByCoordinates(lat, lon);
-    
-    if (weatherData != null) {
-      setState(() {
-        _weatherData = WeatherData.fromJson(weatherData);
-        _isLoading = false;
-      });
       
-      // Ajouter un marqueur pour la météo
-      await _addWeatherMarker(lat, lon);
-    } else {
+      // Obtenir les données météo pour Casablanca
+      final weatherData = await _weatherService.getWeatherByCity("Casablanca");
+      
+      if (weatherData != null) {
+        setState(() {
+          _weatherData = WeatherData.fromJson(weatherData);
+          _isLoading = false;
+        });
+        
+        await _addWeatherMarker(_defaultLat, _defaultLon);
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Navigation error: $e");
       setState(() {
         _isLoading = false;
       });
@@ -90,14 +87,22 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
     }
   }
   
-  void _handleVoiceCommand(String text) {
-    text = text.toLowerCase();
-    if (text.contains('météo') || text.contains('temps')) {
+  // Remplacez votre méthode _handleVoiceCommand actuelle par celle-ci
+  void _handleVoiceCommand(String command) {
+    print("Commande reconnue: $command");
+    command = command.toLowerCase();
+    
+    if (command.contains('météo') || command.contains('temps')) {
       _speakWeatherInfo();
-    } else if (text.contains('localisation') || text.contains('position')) {
+    } else if (command.contains('localisation') || command.contains('position')) {
       _goToCurrentLocation();
-    } else if (text.contains('aide') || text.contains('commandes')) {
-      _voiceAssistant.speak("Vous pouvez demander la météo, votre localisation ou de l'aide");
+    } else if (command.contains('casablanca')) {
+      _goToCasablanca();
+    } else if (command.contains('aide') || command.contains('commandes')) {
+      _voiceAssistant.speak("Vous pouvez demander la météo, votre localisation, aller à Casablanca ou de l'aide");
+    } else {
+      // Commande non reconnue
+      _voiceAssistant.speak("Désolé, je n'ai pas compris. Dites 'aide' pour connaître les commandes disponibles.");
     }
   }
   
@@ -124,6 +129,36 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
       }
     } else {
       _voiceAssistant.speak("Impossible de vous localiser");
+    }
+  }
+
+  // Ajoutez cette nouvelle méthode après _goToCurrentLocation()
+  void _goToCasablanca() async {
+    if (_mapController != null) {
+      try {
+        // Coordonnées précises du centre-ville de Casablanca
+        await _mapController!.goToLocation(
+          GeoPoint(latitude: 33.5731, longitude: -7.5898)
+        );
+        await _mapController!.setZoom(zoomLevel: 13); // Zoom un peu plus précis
+        
+        // Obtenir les données météo pour Casablanca
+        final weatherData = await _weatherService.getWeatherByCity("Casablanca");
+        
+        if (weatherData != null) {
+          setState(() {
+            _weatherData = WeatherData.fromJson(weatherData);
+          });
+          
+          // Ajouter un marqueur pour la météo
+          await _addWeatherMarker(33.5731, -7.5898);
+        }
+        
+        _voiceAssistant.speak("Vous êtes maintenant à Casablanca");
+      } catch (e) {
+        print("Erreur de navigation vers Casablanca: $e");
+        _voiceAssistant.speak("Problème lors de la navigation vers Casablanca");
+      }
     }
   }
 
@@ -163,6 +198,14 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
               title: const Text('Ma position'),
               onTap: () {
                 _goToCurrentLocation();
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_city),
+              title: const Text('Casablanca'),
+              onTap: () {
+                _goToCasablanca();
                 Navigator.pop(context);
               },
             ),
@@ -288,27 +331,61 @@ class _WeatherMapScreenState extends State<WeatherMapScreen> {
             ),
           ),
           
-          // Bouton microphone juste avant le footer
+          // Bouton microphone avec feedback visuel amélioré
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Center(
               child: GestureDetector(
-                onTap: () {
+                onTap: () async {
+                  // Feedback utilisateur immédiat
                   setState(() {
                     _isListening = !_isListening;
                   });
+
                   if (_isListening) {
-                    _voiceAssistant.startListening(_handleVoiceCommand);
+                    // Feedback visuel pendant la tentative
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Écoute en cours..."),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    
+                    // Démarrage de l'écoute
+                    bool success = await _voiceAssistant.startListening(_handleVoiceCommand);
+                    
+                    // Si l'écoute a échoué, mettre à jour l'interface
+                    if (!success) {
+                      setState(() {
+                        _isListening = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Impossible d'activer la reconnaissance vocale"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   } else {
-                    _voiceAssistant.stopListening();
+                    await _voiceAssistant.stopListening();
                   }
                 },
-                child: Container(
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: _isListening ? Colors.red.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+                    color: _isListening 
+                      ? Colors.red.withOpacity(_isListening ? 0.6 : 0.2) 
+                      : Colors.blue.withOpacity(0.2),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _isListening ? Colors.red.withOpacity(0.3) : Colors.black26,
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
                   child: Icon(
                     _isListening ? Icons.mic : Icons.mic_none,
