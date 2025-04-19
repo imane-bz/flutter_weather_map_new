@@ -11,12 +11,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Météo Map',
+      debugShowCheckedModeBanner: false,  // Ajoutez cette ligne pour supprimer la bannière DEBUG
+      title: 'RouteGenie',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const WeatherMapScreen(),  // Utilisez l'écran de météo comme écran principal
+      home: const WeatherMapScreen(),
     );
   }
 }
